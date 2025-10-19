@@ -49,10 +49,10 @@ def analyze_feedback_message(message):
 
     return json.loads(completion.choices[0].message.content.strip())
 
-print("API survey.py loaded.")
+print("API feedback.py loaded.")
 # ✅ Correct Vercel entry point
-def handler(event, context):
-    print("survey handler invoked.")
+def handler(request):
+    print("feedback handler invoked.")
     try:
         if request.method != "POST":
             return {
