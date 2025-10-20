@@ -1,9 +1,10 @@
 import os
 import json
 import pymysql
+from http.server import BaseHTTPRequestHandler
 from openai import OpenAI
 
-# Load .env locally
+# Load .env locally (only for local testing)
 if os.getenv("VERCEL") is None:
     from dotenv import load_dotenv
     load_dotenv()
@@ -49,56 +50,53 @@ def analyze_feedback_message(message):
 
     return json.loads(completion.choices[0].message.content.strip())
 
-print("API feedback.py loaded.")
-# ✅ Correct Vercel entry point
-def handler(request):
-    print("feedback handler invoked.")
-    try:
-        if request.method != "POST":
-            return {
-                "statusCode": 405,
-                "body": "Method Not Allowed"
-            }
 
-        body = request.json()
-        message = body.get("message", "").strip()
+# ✅ Vercel-compatible HTTP handler
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            # Read request body
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode("utf-8"))
 
-        if not message:
-            return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": json.dumps({"error": "Missing 'message' field"})
-            }
+            message = data.get("message", "").strip()
+            if not message:
+                self.respond(400, {"error": "Missing 'message' field"})
+                return
 
-        analysis = analyze_feedback_message(message)
+            # Analyze feedback
+            analysis = analyze_feedback_message(message)
 
-        conn = get_db_connection()
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO analyzed_feedback (message, doctor_score, nurse_score, hospital_score, notes_analysis)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (
-                message,
-                analysis.get("doctor", 5),
-                analysis.get("nurse", 5),
-                analysis.get("hospital", 5),
-                analysis.get("notes", "")
-            ))
-            conn.commit()
-        conn.close()
+            # Save to DB
+            conn = get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO analyzed_feedback (message, doctor_score, nurse_score, hospital_score, notes_analysis)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    message,
+                    analysis.get("doctor", 5),
+                    analysis.get("nurse", 5),
+                    analysis.get("hospital", 5),
+                    analysis.get("notes", "")
+                ))
+                conn.commit()
+            conn.close()
 
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
+            self.respond(200, {
                 "status": "success",
                 "data": analysis
             })
-        }
 
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": str(e)})
-        }
+        except Exception as e:
+            self.respond(500, {"error": str(e)})
+
+    def do_GET(self):
+        self.respond(405, {"error": "Method Not Allowed"})
+
+    def respond(self, status_code, body):
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(body).encode("utf-8"))
