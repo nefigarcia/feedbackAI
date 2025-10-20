@@ -52,7 +52,25 @@ def analyze_feedback_message(message):
 
 
 # ✅ Vercel-compatible HTTP handler
+ALLOWED_ORIGINS = [
+    "http://localhost:9002",
+    "https://surveyai.im"
+]
+
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        origin = self.headers.get("Origin")
+        if origin in ALLOWED_ORIGINS:
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Origin", origin)
+        else:
+            self.send_response(403)
+            self.send_header("Access-Control-Allow-Origin", "null")
+
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_POST(self):
         try:
             # Read request body
@@ -96,7 +114,17 @@ class handler(BaseHTTPRequestHandler):
         self.respond(405, {"error": "Method Not Allowed"})
 
     def respond(self, status_code, body):
+        origin = self.headers.get("Origin")
         self.send_response(status_code)
+
+        if origin in ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+        else:
+            self.send_header("Access-Control-Allow-Origin", "null")
+
         self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
         self.wfile.write(json.dumps(body).encode("utf-8"))
