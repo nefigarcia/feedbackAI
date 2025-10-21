@@ -51,7 +51,7 @@ def analyze_feedback_message(message):
     return json.loads(completion.choices[0].message.content.strip())
 
 
-# ✅ Vercel-compatible HTTP handler
+# Vercel-compatible HTTP handler
 ALLOWED_ORIGINS = [
     "http://localhost:9002",
     "https://surveyai.im"
@@ -110,4 +110,16 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             self.respond(500, {"error": str(e)})
 
-        
+    def respond(self, status_code, body):
+        origin = self.headers.get("Origin")
+        self.send_response(status_code)
+
+        if origin in ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+        else:
+            self.send_header("Access-Control-Allow-Origin", "null")
+
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+
+        self.wfile.write(json.dumps(body).encode("utf-8"))
