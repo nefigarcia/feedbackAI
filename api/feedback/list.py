@@ -71,60 +71,25 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
-    def do_POST(self):
+   
+
+        def do_GET(self):
         try:
-            # Read request body
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length)
-            data = json.loads(body.decode("utf-8"))
-
-            message = data.get("message", "").strip()
-            if not message:
-                self.respond(400, {"error": "Missing 'message' field"})
-                return
-
-            # Analyze feedback
-            analysis = analyze_feedback_message(message)
-
-            # Save to DB
             conn = get_db_connection()
             with conn.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO analyzed_feedback (message, doctor_score, nurse_score, hospital_score, notes_analysis)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (
-                    message,
-                    analysis.get("doctor", 5),
-                    analysis.get("nurse", 5),
-                    analysis.get("hospital", 5),
-                    analysis.get("notes", "")
-                ))
-                conn.commit()
+                cursor.execute("SELECT id, message, doctor_score, nurse_score, hospital_score, notes_analysis, created_at FROM analyzed_feedback ORDER BY created_at DESC")
+                result = cursor.fetchall()
             conn.close()
+
+            # Convert datetime objects to string
+            for row in result:
+                if 'created_at' in row and row['created_at'] is not None:
+                    row['created_at'] = row['created_at'].isoformat()
 
             self.respond(200, {
                 "status": "success",
-                "data": analysis
+                "data": result
             })
 
         except Exception as e:
             self.respond(500, {"error": str(e)})
-
-    def do_GET(self):
-        self.respond(405, {"error": "Method Not Allowed"})
-
-    def respond(self, status_code, body):
-        origin = self.headers.get("Origin")
-        self.send_response(status_code)
-
-        if origin in ALLOWED_ORIGINS:
-            self.send_header("Access-Control-Allow-Origin", origin)
-        else:
-            self.send_header("Access-Control-Allow-Origin", "null")
-
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
-
-        self.wfile.write(json.dumps(body).encode("utf-8"))
