@@ -110,23 +110,21 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             self.respond(500, {"error": str(e)})
 
-        def do_GET(self):
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT id, message, doctor_score, nurse_score, hospital_score, notes_analysis, created_at FROM analyzed_feedback ORDER BY created_at DESC")
-                result = cursor.fetchall()
-            conn.close()
+    def do_GET(self):
+        self.respond(405, {"error": "Method Not Allowed"})
 
-            # Convert datetime objects to string
-            for row in result:
-                if 'created_at' in row and row['created_at'] is not None:
-                    row['created_at'] = row['created_at'].isoformat()
+    def respond(self, status_code, body):
+        origin = self.headers.get("Origin")
+        self.send_response(status_code)
 
-            self.respond(200, {
-                "status": "success",
-                "data": result
-            })
+        if origin in ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+        else:
+            self.send_header("Access-Control-Allow-Origin", "null")
 
-        except Exception as e:
-            self.respond(500, {"error": str(e)})
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+        self.wfile.write(json.dumps(body).encode("utf-8"))
