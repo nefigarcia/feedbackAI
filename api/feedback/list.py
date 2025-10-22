@@ -28,7 +28,7 @@ def get_db_connection():
 # Vercel-compatible HTTP handler
 ALLOWED_ORIGINS = [
     "http://localhost:9002",
-    "https://surveyai.rosystems.net/"
+    "https://surveyai.rosystems.net"
 ]
 
 class handler(BaseHTTPRequestHandler):
