@@ -54,7 +54,7 @@ def analyze_feedback_message(message):
 # Vercel-compatible HTTP handler
 ALLOWED_ORIGINS = [
     "http://localhost:9002",
-    "https://surveyai.im"
+    "https://surveyai.rosystems.net/"
 ]
 
 class handler(BaseHTTPRequestHandler):
