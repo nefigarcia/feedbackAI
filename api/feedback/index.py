@@ -34,9 +34,9 @@ def analyze_feedback_message(message):
     prompt = (
         "You are a helpful assistant analyzing patient feedback. "
         "Give each of the following a score from 1 (very bad) to 10 (excellent): doctor, nurse, hospital. "
-        "If not mentioned, give a score of 5. Explain why you gave those scores in a 'Notes Analysis'. "
+        "If not mentioned and not indirectly referenced, set its value to \"N/A\" (string, not number). Explain why you gave those scores in a 'Notes Analysis'. "
         "Respond ONLY in JSON format like this:\n"
-        "{ \"doctor\": 8, \"nurse\": 5, \"hospital\": 9, \"notes\": \"...\" }"
+        "{ \"doctor\": <number or 'N/A'>, \"nurse\": <number or 'N/A'>, \"hospital\": <number or 'N/A'>, \"notes\": \"...\" }"
     )
 
     completion = client.chat.completions.create(
